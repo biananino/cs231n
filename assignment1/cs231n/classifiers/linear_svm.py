@@ -32,19 +32,28 @@ def svm_loss_naive(W, X, y, reg):
         scores = X[i].dot(W)
         correct_class_score = scores[y[i]]
         for j in range(num_classes):
-            if j == y[i]:
-                continue
-            margin = scores[j] - correct_class_score + 1  # note delta = 1
-            if margin > 0:
-                loss += margin
+          if j == y[i]:
+            continue
+          margin = scores[j] - correct_class_score + 1 # note delta = 1
+          if margin > 0:
+            loss += margin
+            dW[:,j] += X[i]
+            dW[:,y[i]] -= X[i] 
 
-    # Right now the loss is a sum over all training examples, but we want it
-    # to be an average instead so we divide by num_train.
-    loss /= num_train
 
     # Add regularization to the loss.
     loss += reg * np.sum(W * W)
 
+    # Right now the loss is a sum over all training examples, but we want it
+    # to be an average instead so we divide by num_train.
+    loss /= num_train
+    dW /= num_train
+
+
+
+    # Add regularization to the gradient
+    dW = dW + 2*reg*W/num_train
+    
     #############################################################################
     # TODO:                                                                     #
     # Compute the gradient of the loss function and store it dW.                #
@@ -78,7 +87,18 @@ def svm_loss_vectorized(W, X, y, reg):
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    num_inputs = y.shape[0]
+    scores = np.dot(X,W)
+    correct_scores = scores[range(num_inputs),y]
+    margin = (scores - np.matrix(correct_scores).T + 1)
+
+    losses = np.maximum(margin,np.zeros(margin.shape))
+    loss = np.sum(losses)
+    loss -= num_inputs
+    #Regularization loss
+    loss += reg*np.sum(W*W)   
+    loss /= num_inputs
+    
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
@@ -93,8 +113,16 @@ def svm_loss_vectorized(W, X, y, reg):
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
-
+    #First i create a matrix with the derivative of the loss with respect to the scores
+    margin_bool = np.where(margin > 0, 1, 0) #Matrix with 1s whenever the margin is positive
+    over_margin_counter = np.sum(margin_bool, axis = 1) - 1 #Counts the number of positive margins in a row
+    margin_bool[range(num_inputs),y] = - over_margin_counter 
+    #Then i apply chain rule to get the gradient due to SVM loss
+    dW = np.dot(X.T,margin_bool)
+    #Add regularization
+    dW += 2*reg*W    
+    dW /= num_inputs
+    
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
     return loss, dW
