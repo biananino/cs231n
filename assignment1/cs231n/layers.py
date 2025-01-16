@@ -28,7 +28,10 @@ def affine_forward(x, w, b):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    n_inputs = x.shape[0]
+    new_x = x.reshape(n_inputs,-1)
+    product = np.dot(new_x,w)
+    out = product + b
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -61,7 +64,14 @@ def affine_backward(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    n_inputs = x.shape[0] #N
+    bias_length = b.shape[0]
+    new_x = x.reshape(n_inputs,-1).T # DxN
+    long_dx = np.dot(dout,w.T)
+
+    db = np.dot(dout.T, np.ones(n_inputs))
+    dx = long_dx.reshape(x.shape)
+    dw = np.dot(new_x,dout)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -87,7 +97,7 @@ def relu_forward(x):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    out = np.maximum(0,x)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -114,7 +124,7 @@ def relu_backward(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    dx = np.where(x > 0, dout, 0)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -773,14 +783,27 @@ def svm_loss(x, y):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    num_inputs = y.shape[0]
+    scores = x.copy()
+    correct_scores = scores[range(num_inputs),y]
+    margin = (scores - np.matrix(correct_scores).T + 1)
 
+    losses = np.maximum(margin,np.zeros(margin.shape))
+    loss = np.sum(losses)
+    loss -= num_inputs 
+    loss /= num_inputs
+
+    #First i create a matrix with the derivative of the loss with respect to the scores
+    margin_bool = np.where(margin > 0, 1, 0) #Matrix with 1s whenever the margin is positive
+    over_margin_counter = np.sum(margin_bool, axis = 1) - 1 #Counts the number of positive margins in a row
+    margin_bool[range(num_inputs),y] = - over_margin_counter 
+    dx = margin_bool/num_inputs
+    
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
     return loss, dx
-
 
 def softmax_loss(x, y):
     """
@@ -802,8 +825,22 @@ def softmax_loss(x, y):
     # TODO: Copy over your solution from A1.
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+    num_inputs = y.shape[0]
+    scores = x
+    scores = scores - np.max(scores, axis = 1, keepdims = True)
+    exp_scores = np.exp(scores)
+    exp_sums = np.sum(exp_scores, axis = 1, keepdims = True)
+    probabilities = exp_scores/exp_sums
+    correct_probabilities = probabilities[range(num_inputs),y]
+    loss = np.sum(-np.log(correct_probabilities))
 
-    pass
+	#Construct matrix of the gradient of the loss with respect to the scores
+    dx = probabilities
+    dx[range(num_inputs),y] += - 1
+    	
+    #Normalize loss by sample size
+    loss /= num_inputs
+    dx /= num_inputs
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
